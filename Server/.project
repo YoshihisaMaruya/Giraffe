@@ -1,5 +1,5 @@
 <projectDescription>
-  <name>jna_test</name>
+  <name>giraffe_server</name>
   <buildSpec>
     <buildCommand>
       <name>org.scala-ide.sdt.core.scalabuilder</name>

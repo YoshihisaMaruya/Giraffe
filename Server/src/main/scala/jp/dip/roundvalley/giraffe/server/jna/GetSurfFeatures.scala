@@ -8,7 +8,7 @@ import com.sun.jna._
 import jp.dip.roundvalley.scala.support._
 
 object GetSurfFeatures {
-   val lib_path = "/Users/maruyayoshihisa/workspace/scala/workspace/jnaTest/jna/libget_surf_features.so"
+   val lib_path = getClass.getClassLoader.getResource("jna/libget_surf_features.so").getFile
    val getSurfFeaturs = NativeLibrary.getInstance(lib_path)
    
    def init(thread_count: java.lang.Integer){

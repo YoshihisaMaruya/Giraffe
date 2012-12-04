@@ -8,7 +8,7 @@ import com.sun.jna._
 import jp.dip.roundvalley.scala.support._
 
 object LshMatcher {
-   val lib_path = "/Users/maruyayoshihisa/workspace/scala/workspace/jnaTest/jna/liblsh_matcher.so"
+   val lib_path = getClass.getClassLoader.getResource("jna/liblsh_matcher.so").getFile
    val lshMatcher = NativeLibrary.getInstance(lib_path)
    
    ////lshのハッシュテーブルを作成

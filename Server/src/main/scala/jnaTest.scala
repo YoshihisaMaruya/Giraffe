@@ -12,13 +12,14 @@ import jp.dip.roundvalley.scala.support._
 import jp.dip.roundvalley.giraffe.server.jna.LshMatcher
 
 object jnaTest {
-  val port = 5003
+  val port = 5004
   val thread_num = 50
-  val mst_image_dir_path = "/Users/maruyayoshihisa/workspace/scala/workspace/jnaTest/mst_image"
+  val mst_image_dir_path = getClass.getClassLoader.getResource("mst_image").getFile
   val mst_image_num = 99
   
   def main(args : Array[String]) = {
     println("jna test")
+    
     try{
       //create a server socket
       val serverSocket = new ServerSocket(port)
