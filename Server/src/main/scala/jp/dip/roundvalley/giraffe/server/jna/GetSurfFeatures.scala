@@ -6,6 +6,7 @@ package jp.dip.roundvalley.giraffe.server.jna
 
 import com.sun.jna._
 import jp.dip.roundvalley.scala.support._
+import jp.dip.roundvalley.giraffe.server.model._
 
 object GetSurfFeatures {
    val lib_path = getClass.getClassLoader.getResource("jna/libget_surf_features.so").getFile
@@ -26,12 +27,16 @@ class GetSurfFeatures(thread_id: java.lang.Integer,ipadder: String) {
 		exeSurf.invokePointer(Array(thread_id,file_path))
     }
     
+    /*
+     * 
+     */
     def fromYUV(width: java.lang.Integer,height: java.lang.Integer,data: Array[Byte]){
       val exeSurf = GetSurfFeatures.getSurfFeaturs.getFunction("exeSurfFromYuv")
       val mtime = myCountTime.getExecutionTime{
     	  exeSurf.invoke(Array(thread_id,width,height,data))
       }
       myLog.exe_time(thread_id,ipadder,"SURF",mtime.toString)
+      Log.create.tag("SURF").ipadder(ipadder).exe_time(mtime.toString).save
     }
 	
     /*

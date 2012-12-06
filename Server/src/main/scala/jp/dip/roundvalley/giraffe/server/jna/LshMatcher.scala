@@ -6,6 +6,7 @@ package jp.dip.roundvalley.giraffe.server.jna
 
 import com.sun.jna._
 import jp.dip.roundvalley.scala.support._
+import jp.dip.roundvalley.giraffe.server.model._
 
 object LshMatcher {
    val lib_path = getClass.getClassLoader.getResource("jna/liblsh_matcher.so").getFile
@@ -29,7 +30,10 @@ class LshMatcher(thread_id: java.lang.Integer,ipadder: String){
     val time = myCountTime.getExecutionTime{
     	result_id = LshMatcher.lshMatcher.getFunction("match").invokePointer(Array(query_keypoints_size,rows,cols,query_descriptors))
     }
+    
     myLog.exe_time(thread_id,ipadder,"Match",time.toString)
+    Log.create.tag("Lsh").exe_time(time.toString).ipadder(ipadder).save
+    
     val result_tupple = _makeTupple(result_id.getIntArray(0, 99).toList,0).sort((x,y) => x._2 > y._2)
     //result_tupple.foreach(x => print(x + ","))
     _getFront(5, result_tupple)

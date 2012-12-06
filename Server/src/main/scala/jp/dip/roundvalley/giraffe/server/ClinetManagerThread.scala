@@ -23,10 +23,11 @@ import java.io.InputStream
 import java.io.FileInputStream
 import java.awt.image.BufferedImage
 
-import jp.dip.roundvalley.RequestSerializer;
-import jp.dip.roundvalley.ResponseSerializer;
+import jp.dip.roundvalley.RequestSerializer
+import jp.dip.roundvalley.ResponseSerializer
 import jp.dip.roundvalley.giraffe.server.jna._
 import jp.dip.roundvalley.scala.support._
+import jp.dip.roundvalley.giraffe.server.model._
 
 import java.io.File
 
@@ -42,15 +43,10 @@ class ClinetManagerThread(thread_id : Int, socket : Socket) extends Thread {
       case e => e.printStackTrace(); null
     }
   }
-
-  //?をrgbに変換
-  private def rgb(c : Int) : Int = {
-    val r = () => (c >> 16 & 0xff).toByte
-    val g = () => c >> 8 & 0xff
-    val b = () => c & 0xff
-    (0xff000000 | r() << 16 | g() << 8 | b())
-  }
   
+  /*
+   * rgbのバイト配列をint配列に直す
+   */
   private def rgbByteArraytoIntArray(bRGB:Array[Byte]): Array[Int] = {
     val iRGB_length = bRGB.length / 3
     val iRGB = new Array[Int](iRGB_length)
@@ -92,7 +88,6 @@ class ClinetManagerThread(thread_id : Int, socket : Socket) extends Thread {
           count = count + 3
         }
       }
- 
       new ResponseSerializer(result_id.toString, height, widht, rgbs)
     } else null
   }
@@ -128,13 +123,16 @@ class ClinetManagerThread(thread_id : Int, socket : Socket) extends Thread {
           //match
           val result_ids = lshMatcher.exe_match(getSurfFeatures.keypoints_size, getSurfFeatures.rows, getSurfFeatures.cols, getSurfFeatures.descriptors)
           myLog.info("Result", "thread_id =" + thread_id + ",result_ids=" + result_ids.toString)
-          myLog.exe_time(thread_id,this.socket.getInetAddress.toString,"Total",(System.currentTimeMillis() - start).toString)
           
           //response
           val response = _makeResponse(result_ids.head)
           myLog.info("ResponseSize","widht=" + response.getWidth + "height=" + response.getHeight + "size=" + response.getByteData.length + "[B]")
           out.writeObject(response)
           out.flush()
+          
+          //total log
+          myLog.exe_time(thread_id,this.socket.getInetAddress.toString,"Total",(System.currentTimeMillis() - start).toString)
+          Log.tag("Response").exe_time((System.currentTimeMillis() - start).toString).ipadder(this.socket.getInetAddress.toString).save()
           false
         }
       }

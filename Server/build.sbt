@@ -11,7 +11,7 @@ scalaVersion := "2.9.2"
 //extra library
 libraryDependencies ++= Seq(
    "org.scala-tools" % "scala-tools-parent" % "1.6",
-   "org.squeryl" % "squeryl_2.9.1" % "0.9.5-5",
+   "net.liftweb" % "lift-mapper_2.9.2" % "2.5-M3",
    "net.java.dev.jna" % "jna" % "3.5.1",
    "com.h2database" % "h2" % "1.3.170"
 ) 

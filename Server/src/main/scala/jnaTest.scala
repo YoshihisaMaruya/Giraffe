@@ -7,8 +7,10 @@ import scala.util.Random
 import com.sun.org.apache.xalan.internal.xsltc.compiler.ForEach
 import jp.dip.roundvalley.giraffe.server.jna.GetSurfFeatures
 import java.net._
+
 import jp.dip.roundvalley.giraffe.server._
 import jp.dip.roundvalley.scala.support._
+import jp.dip.roundvalley.giraffe.server.model._
 import jp.dip.roundvalley.giraffe.server.jna.LshMatcher
 
 import java.sql.Connection
@@ -17,58 +19,46 @@ import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
 
-import org.squeryl.KeyedEntity
-import org.squeryl.Schema
-import org.squeryl.{ SessionFactory, Session }
+import net.liftweb.common.Box
+import net.liftweb.http.{ LiftRules }
+import net.liftweb.mapper.{ DB, Schemifier, DefaultConnectionIdentifier, StandardDBVendor }
 
 object jnaTest {
-  val port = 5004
-  val thread_num = 50
   val mst_image_dir_path = getClass.getClassLoader.getResource("mst_image").getFile
   val mst_image_num = 99
-  val sqlite_db = getClass.getClassLoader.getResource("h2").getFile
-   
+  val port = App.get("server.port").text.toInt
+  val max_thread = App.get("server.max_thread").text.toInt
+
   def main(args : Array[String]) = {
     println("h2 test")
-   
-    Class.forName("org.h2.Driver")
-    val conn = DriverManager.getConnection("jdbc:h2:" + sqlite_db + "/test", "sa", "")
-    val stmt = conn.createStatement
-    stmt.execute("drop table sample")
-    stmt.execute("create table sample (id identity, value varchar(255))")
-    conn.close
 
-    par(insert(1), insert(2))
-    
-    println("end")
-    /*
-    try{
+    //DB connection
+    if (!DB.jndiJdbcConnAvailable_?) {
+      val db_info = App.get("db")
+      val h2_db = getClass.getClassLoader.getResource("h2").getFile
+      myLog.info("DB", "name=" + h2_db + "/" + (db_info \ "name").text + ",username=" + (db_info \ "username").text + ",passwd=" + (db_info \ "passwd").text)
+      val vendor = new StandardDBVendor("org.h2.Driver", "jdbc:h2:" + h2_db + "/" + (db_info \ "name").text, Box((db_info \ "username").text), Box((db_info \ "passwd").text))
+      LiftRules.unloadHooks.append(vendor.closeAllConnections_! _)
+      DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
+      Schemifier.schemify(true, Schemifier.infoF _, Log)
+    }
+
+    try {
       //create a server socket
       val serverSocket = new ServerSocket(port)
-      GetSurfFeatures.init(thread_num)
+      GetSurfFeatures.init(max_thread)
       LshMatcher.init(mst_image_dir_path, mst_image_num)
-      myLog.info("Serverstart","port=" + port + ",ipadder=" + serverSocket.getInetAddress.toString)
-      
-      while(true){
-    	  val socket = serverSocket.accept()
-    	  val id = ThreadIdManagement.acquisition
-    	  val th = new ClinetManagerThread(id,socket)
-    	  th.start()
-      //accept a connection from a clinet  
-      } 
-    }
-    catch{
-      case e => e.printStackTrace() 
-    }*/
-  }
+      myLog.info("Serverstart", "port=" + App.get("server.port") + ",ipadder=" + serverSocket.getInetAddress.toString)
 
-  // 100件INSERTする関数
-  def insert(id : Int) {
-    val conn = DriverManager.getConnection("jdbc:h2:" + sqlite_db + "/test", "sa", "")
-    val stmt = conn.createStatement
-    for (i <- 0 to 100) {
-      stmt.execute("insert into sample (value) values ( '%d-%d' )" format (id, i))
+      while (true) {
+        val socket = serverSocket.accept()
+        val id = ThreadIdManagement.acquisition
+        val th = new ClinetManagerThread(id, socket)
+        th.start()
+        //accept a connection from a clinet  
+      }
+    } catch {
+      case e => e.printStackTrace()
     }
-    conn.close
   }
 }
