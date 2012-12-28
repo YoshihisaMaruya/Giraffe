@@ -25,6 +25,11 @@
   <classpathentry path="/Users/maruyayoshihisa/.ivy2/cache/net.liftweb/lift-proto_2.9.2/jars/lift-proto_2.9.2-2.5-M3.jar" kind="lib"></classpathentry>
   <classpathentry path="/Users/maruyayoshihisa/.ivy2/cache/net.java.dev.jna/jna/jars/jna-3.5.1.jar" kind="lib"></classpathentry>
   <classpathentry path="/Users/maruyayoshihisa/.ivy2/cache/com.h2database/h2/jars/h2-1.3.170.jar" kind="lib"></classpathentry>
+  <classpathentry path="/Users/maruyayoshihisa/.ivy2/cache/org.specs2/specs2_2.9.2/jars/specs2_2.9.2-1.12.3.jar" kind="lib"></classpathentry>
+  <classpathentry path="/Users/maruyayoshihisa/.ivy2/cache/org.specs2/specs2-scalaz-core_2.9.2/jars/specs2-scalaz-core_2.9.2-6.0.1.jar" kind="lib"></classpathentry>
+  <classpathentry path="/Users/maruyayoshihisa/.ivy2/cache/junit/junit/jars/junit-4.11.jar" kind="lib"></classpathentry>
+  <classpathentry path="/Users/maruyayoshihisa/.ivy2/cache/org.hamcrest/hamcrest-core/jars/hamcrest-core-1.3.jar" kind="lib"></classpathentry>
+  <classpathentry path="/Users/maruyayoshihisa/.ivy2/cache/org.scalatest/scalatest_2.9.2/jars/scalatest_2.9.2-2.0.M6-SNAP3.jar" kind="lib"></classpathentry>
   <classpathentry path="org.eclipse.jdt.launching.JRE_CONTAINER" kind="con"></classpathentry>
   <classpathentry path="bin" kind="output"></classpathentry>
 </classpath>

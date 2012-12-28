@@ -1,5 +1,5 @@
 <projectDescription>
-  <name>giraffe_server</name>
+  <name>seeken_server</name>
   <buildSpec>
     <buildCommand>
       <name>org.scala-ide.sdt.core.scalabuilder</name>
