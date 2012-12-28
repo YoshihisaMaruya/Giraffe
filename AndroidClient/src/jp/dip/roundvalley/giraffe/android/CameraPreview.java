@@ -13,7 +13,7 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import jp.dip.roundvalley.ResponseSerializer;
-import jp.dip.roundvalley.giraffe.android.thread.*;
+import jp.dip.roundvalley.giraffe.android.client.*;
 
 public class CameraPreview extends SurfaceView implements
 		SurfaceHolder.Callback, Camera.AutoFocusCallback {

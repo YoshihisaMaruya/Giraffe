@@ -1,4 +1,4 @@
-package jp.dip.roundvalley.giraffe.android.thread;
+package jp.dip.roundvalley.giraffe.android.client;
 
 import java.lang.Thread;
 import java.util.LinkedList;
