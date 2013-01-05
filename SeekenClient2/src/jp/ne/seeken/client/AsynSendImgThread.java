@@ -6,8 +6,7 @@ import java.util.Queue;
 import java.net.*;
 import java.io.*;
 
-import jp.dip.roundvalley.RequestSerializer;
-import jp.dip.roundvalley.ResponseSerializer;
+import jp.ne.seeken.serializer.*;
 
 import android.util.Log;
 
@@ -27,11 +26,22 @@ public class AsynSendImgThread extends Thread {
 	private ObjectInputStream in;
 	private Boolean is_close = false;
 
-	public AsynSendImgThread() {
-
+	/**
+	 * 
+	 * @param host
+	 * @param port
+	 */
+	public AsynSendImgThread(String host,int port) {
+		this.setSocket(host, port);
 	}
 
-	public void setSocket(String host, int port) {
+	
+	/**
+	 * 
+	 * @param host
+	 * @param port
+	 */
+	private void setSocket(String host, int port) {
 		try {
 			this.socket = new Socket(host, port);
 			this.out = new ObjectOutputStream(this.socket.getOutputStream());
@@ -43,19 +53,29 @@ public class AsynSendImgThread extends Thread {
 		}
 	}
 
-	public void setRequest(int widht, int height, byte[] data) {
-		if (set_count < request_count) {
-			set_count++;
-			return;
-		}
+	/**
+	 * TODO: スレッドと同期したほうが良い　？
+	 */
+	public void clearBuffer(){
+		this.requestBuffer.clear();
+		this.responseBuffer.clear();
+	}
+	/**
+	 * 
+	 * @param widht
+	 * @param height
+	 * @param data
+	 * @param color_format
+	 */
+	public void setRequest(int widht, int height, byte[] data,String color_format) {
 		//Log.i("SetRequest","SetRequest");
-		RequestSerializer is = new RequestSerializer(widht, height, data);
+		RequestSerializer is = new RequestSerializer(widht, height, data,color_format);
 		if(this.max_request_buffer < requestBuffer.size()){
 			this.requestBuffer.poll();
 		}
 		this.requestBuffer.add(is);
-		set_count = 1; 
 	}
+	
 
 	public ResponseSerializer getResponse() {
 		//Log.i("GetResponse","GetResponse");
@@ -92,9 +112,6 @@ public class AsynSendImgThread extends Thread {
 				
 				RequestSerializer request = this.requestBuffer.poll();
 				
-
-				Log.i("Request Size", "width=" + request.getWidth() + "height=" + request.getHeight() + "size=" + request.getByteData().length  + "[B]");
-				
 				this.out.writeObject(request); //send
 				this.out.flush();
 				
@@ -106,7 +123,6 @@ public class AsynSendImgThread extends Thread {
 				long stop = System.currentTimeMillis(); //ここまで
 				
 				Log.i("Response Time", (stop - start) + "[ms]");
-				Log.i("Response Size", "width=" + response.getWidth() + "height=" + response.getHeight() + "size=" + response.getByteData().length + "[B]");
 				
 				 //nullがぞうが見つからなかった時 or 更新の必要がないとき
 				if (response != null){
@@ -114,9 +130,8 @@ public class AsynSendImgThread extends Thread {
 						this.responseBuffer.poll();
 					}
 					//TODO: TMP
-					ResponseSerializer tmp_response = new ResponseSerializer(response.getResultMessage(), response.getWidth(), response.getHeight(), rgbByteArraytorgbIntArray(response.getByteData()));
-					this.responseBuffer.add(tmp_response);
-				}	
+					this.responseBuffer.add(response);
+				}
 			}
 			this.out.writeObject(null); //コネクションをcloseするためのメッセージ
 			this.out.close();

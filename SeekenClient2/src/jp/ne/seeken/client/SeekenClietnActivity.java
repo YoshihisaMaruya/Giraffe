@@ -5,13 +5,20 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
+import java.util.Properties;
 import java.util.Vector;
+import java.io.FileWriter;
+
+import jp.ne.seeken.serializer.ResponseSerializer;
 
 import com.metaio.sdk.MetaioDebug;
+import com.metaio.sdk.jni.ECOLOR_FORMAT;
 import com.metaio.sdk.jni.IGeometry;
 import com.metaio.sdk.jni.IMetaioSDKCallback;
 import com.metaio.sdk.jni.ImageStruct;
@@ -23,21 +30,30 @@ import com.metaio.tools.io.AssetsManager;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.app.Activity;
 import android.content.res.AssetManager;
 import android.util.Log;
 import android.view.View;
+import android.graphics.*;
+	
 
 public class SeekenClietnActivity extends MetaioSDKViewActivity {
 
 	private IGeometry nowLoadingImage;
-	private IGeometry mMoviePlane;
-	private IGeometry dMP1;
-	private IGeometry dMP2;
 	private String packageName = null;
 	private String dir_path = null;
-
+	private String traking_data_path = null;
+	//ムービ用のプレーン
+	private IGeometry[] moviePlanes = new IGeometry[5];
+	
+	private Properties prop = new Properties();
+	
 	private MetaioSDKCallbackHandler mCallbackHandler;
+	
+	//Seeken
+	private AsynSendImgThread request;
+	private YoutubeDownloader yd;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -49,8 +65,39 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 		}
 
 		super.onCreate(savedInstanceState);
+		
+		//データ保存用のパス
+		/*this.dir_path = Environment.getExternalStorageDirectory().getPath() + "/seeken"; // /dataなど
+		File f = new File(dir_path);
+		f.mkdir();
+		this.dir_path += "/";*/
+		
 		this.packageName = this.getApplicationContext().getPackageName();
 		this.dir_path = "/data/data/" + packageName + "/files/";
+		
+		this.traking_data_path = this.dir_path + "TrackingData.xml";
+		
+		//config情報
+		AssetManager as = getResources().getAssets();
+		InputStream is = null;
+		try{
+			is = as.open("config.properties");
+			 prop.load(is);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		////各種スレッド
+		//Seeken DB通信用スレッド
+		String host = prop.get("seeken.host").toString();
+		int port = Integer.parseInt(prop.get("seeken.port").toString());
+		request = new AsynSendImgThread(host,port);
+		request.start();
+		
+		//Youube Download用
+		this.yd = new YoutubeDownloader(host, port + 1);
+		
 		mCallbackHandler = new MetaioSDKCallbackHandler();
 	}
 
@@ -79,11 +126,11 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 		UnifeyeCallbackHandler ch = new UnifeyeCallbackHandler();
 		metaioSDK.registerCallback(ch);
 
-		metaioSDK.requestCameraImage();
 		// 画像取得スレッドのスタート
 		this.mThread = new UnifeyeCallbackThread();
 		this.mThread.start();
 
+		/*
 		//ローディング画像の読み込み
 		String nowLoadingImage_path = AssetsManager.getAssetPath("Assets2/now_loading.png");
 		if (nowLoadingImage != null) {
@@ -98,7 +145,7 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 						+ nowLoadingImage);
 				finish();
 			}
-		}
+		}*/
 
 		/*
 		 * try {
@@ -151,10 +198,117 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 		is_run = false;
 		super.onPause();
 	}
+	
+	 /**
+	   * rgbのバイト配列をint配列に直す
+	   * @param bRGB : RGB配列(バイト)
+	   * @return iRGB : RGB配列(int) * alphaは0
+	   */
+	  private int[] rgbByteArraytoIntArray(byte[] bRGB){
+	    int iRGB_length = bRGB.length / 3;
+	    int[] iRGB = new int[iRGB_length];
+	    int count = 0;
+	    for (int i = 0;i < iRGB_length; i++) {
+	      int r = bRGB[count];
+	      int g = bRGB[count + 1];
+	      int b = bRGB[count + 2];
+	      iRGB[i] = (0xff000000 | r << 16 | g << 8 | b);
+	      count = count + 3;
+	    }
+	    return iRGB;
+	  }
+	
+	/**
+	 * ResponseSerializerをもとに、各種情報を保存
+	 * スレッドにする必要ありかもー
+	 * @param rs
+	 */
+	private int[] id_maps = null;
+	private void savaResponse(ResponseSerializer rs){
+		//trakingDataの保存
+		String trackingData = rs.getXML();
+		try {
+			FileWriter fw = new FileWriter(traking_data_path);
+			fw.write(trackingData);
+			fw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		//id_mapsを取得
+		int[] pre_id_maps = id_maps;
+		id_maps = rs.getIdMaps();
+		
+		//要らなくなった画像,yotube動画の消去
+		if(pre_id_maps != null){
+			for(int pre_id : pre_id_maps){
+				boolean is_delete = true;
+				for(int id : id_maps){
+					if(pre_id == id) is_delete = false;
+				}
+				if(is_delete){
+					File f = new File(this.getImagePath(pre_id));
+					f.delete();
+					f = new File(this.getMoviePath(pre_id));
+					f.delete();
+				}
+			}
+		}
+		
+		//リソースを一旦開放
+		for(int i = 0; i < moviePlanes.length; i++){
+			if(moviePlanes[i] != null) {
+				metaioSDK.unloadGeometry(moviePlanes[i]);
+			}
+			moviePlanes[i] = null;
+		}
+		
+		//新規画像保存
+		for(int i =0; i < id_maps.length; i++){
+			byte[] image = rs.getImage(i);
+			//imageを保存
+			if(image != null){
+				int width = rs.getWidth(i);
+				int height = rs.getHeight(i);
+				Bitmap bitMap = Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+				int[] argb = rgbByteArraytoIntArray(image);
+				bitMap.setPixels(argb, 0, width, 0, 0, width, height);
+				try {
+					OutputStream fOut = new FileOutputStream(this.getImagePath(id_maps[i]));
+					bitMap.compress(Bitmap.CompressFormat.JPEG, 100, fOut);
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}   
+			}
+		}
+	}
+	
+	private String getImagePath(int id) {return dir_path + id + ".jpg"; }
+	private String getMoviePath(int id) {return dir_path + id + ".3g2"; }
+	
+	@Override
+	public void onSurfaceDestroyed(){
+		this.deleteResoce();
+		super.onSurfaceDestroyed();
+	}
+	
+	/**
+	 * 画像、動画リソースの消去
+	 */
+	private void deleteResoce(){
+		if(id_maps != null){
+		for(int id : id_maps){
+				File f = new File(this.getImagePath(id));
+				f.delete();
+				f = new File(this.getMoviePath(id));
+				f.delete();
+			}
+		}
+	}
 
 	Thread mThread;
 	Boolean is_run = true;
-
 	private class UnifeyeCallbackThread extends Thread {
 		@Override
 		public void run() {
@@ -167,10 +321,37 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 				// //トラッキングできていないときは、サーバーに問い合わせてテンプレートの取得
 				if (gnd == 0) {
 					metaioSDK.requestCameraImage();
+					ResponseSerializer rs = request.getResponse();
+					//応答がある
+					if(rs != null){
+						savaResponse(rs);
+						//別スレッドでやっても大丈夫か？
+						boolean result = metaioSDK.setTrackingConfiguration(traking_data_path);
+						if(!result){
+							Log.d("TrackingData","Create failed");
+						}
+					}
 					is_tracking = false;
 				} else {
 					if (!is_tracking) {
-						metaioSDK.getTrackingValues();
+						request.clearBuffer();
+						TrackingValuesVector trackingValues = metaioSDK.getTrackingValues();
+						int tv = (int) trackingValues.size();
+						for (int i = 0; i < trackingValues.size(); i++) {
+							final TrackingValues v = trackingValues.get(i);
+							int id = Integer.valueOf(v.getCosName());
+							int cosId = v.getCoordinateSystemID();
+							String moviePath = getMoviePath(id);
+							File f = new File(moviePath);
+							//ファイルが存在しているときは、ダウンロードしない
+							if(!f.exists())	yd.execute(id, moviePath);
+							moviePlanes[cosId - 1] = metaioSDK.createGeometryFromMovie(moviePath);
+							moviePlanes[cosId - 1].setScale(new Vector3d(2.0f, 2.0f, 2.0f));
+							moviePlanes[cosId - 1].setRotation(new Rotation(0f, 0f, 0f));
+							moviePlanes[cosId - 1].setCoordinateSystemID(cosId);
+							moviePlanes[cosId - 1].setVisible(true);
+							moviePlanes[cosId - 1].startMovieTexture(true);
+						}
 					}
 					is_tracking = true;
 				}
@@ -178,6 +359,7 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 		}
 	}
 
+	/*
 	private class DownloadThread extends Thread {
 		private IGeometry dMP;
 		private int id;
@@ -204,7 +386,6 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 			if (!file.exists()) {
 				YoutubeDownloader yd = new YoutubeDownloader();
 				FileOutputStream out = null;
-
 				try {
 					out = new FileOutputStream(file);
 					yd.getLink(this.url, "UTF-8");
@@ -222,48 +403,23 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 				}
 			}
 		}
-	}
+	}*/
 
 	private int current_truck_id = -1;
 
 	private class UnifeyeCallbackHandler extends IMetaioSDKCallback {
 		@Override
 		public void onNewCameraFrame(ImageStruct cameraFrame) {
-			byte[] rgb = cameraFrame.getBuffer();
-			int a = 0;
-			a = a + 1;
+			ECOLOR_FORMAT a = cameraFrame.getColorFormat();
+			String color_format = a.toString();
+			request.setRequest(cameraFrame.getWidth(), cameraFrame.getHeight(), cameraFrame.getBuffer(),color_format);
 		}
 
 		@Override
 		public void onTrackingEvent(TrackingValuesVector trackingValues) {
-			int tv = (int) trackingValues.size();
-			for (int i = 0; i < trackingValues.size(); i++) {
-				final TrackingValues v = trackingValues.get(i);
-				int id = Integer.valueOf(v.getCosName());
-				int cosId = v.getCoordinateSystemID();
-				nowLoadingImage.setCoordinateSystemID(cosId);
-				nowLoadingImage.setVisible(true);
-				if (id == 1) {
-				
-					DownloadThread th = new DownloadThread(dMP1, id,
-							v.getCoordinateSystemID(),
-							"http://www.youtube.com/watch?v=iGfLqqjHh3U");
-					th.start();
-				} else if (id == 2) {
-					DownloadThread th = new DownloadThread(dMP2, id,
-							v.getCoordinateSystemID(),
-							"http://www.youtube.com/watch?feature=fvwp&v=aijv8nWShek&NR=1");
-					th.start();
-				}
-			}
 		}
 	}
 
-	@Override
-	protected void onGeometryTouched(IGeometry geometry) {
-		// TODO Auto-generated method stub
-
-	}
 
 	@Override
 	protected IMetaioSDKCallback getMetaioSDKCallbackHandler() {
@@ -271,7 +427,6 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 	}
 
 	final class MetaioSDKCallbackHandler extends IMetaioSDKCallback {
-
 		@Override
 		public void onSDKReady() {
 			// show GUI
@@ -282,6 +437,13 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 				}
 			});
 		}
+	}
+
+
+	@Override
+	protected void onGeometryTouched(IGeometry geometry) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

@@ -4,8 +4,10 @@ package jp.ne.seeken.client;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
+import android.hardware.Camera.PreviewCallback;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.util.Log;
@@ -174,12 +176,12 @@ public abstract class MetaioSDKViewActivity extends Activity implements
 				// now activate the back facing camera
 				final int cameraIndex = SystemInfo
 						.getCameraIndex(CameraInfo.CAMERA_FACING_BACK);
-				mCameraResolution = metaioSDK
-						.startCamera(cameraIndex, 320, 240);
+				//mCameraResolution = metaioSDK						.startCamera(cameraIndex, 320, 240);
 
 				// TODO: can also start camera at higher resolution with
 				// optional downscaling
-				// mCameraResolution = metaioSDK.startCamera(0, 640, 480, 2);
+
+			    mCameraResolution = metaioSDK.startCamera(0, 640, 480, 2);
 
 				// Add GL Surface view
 				mSurfaceView = new MetaioSurfaceView(this);
@@ -384,8 +386,9 @@ public abstract class MetaioSDKViewActivity extends Activity implements
 			//	metaioSDK.registerCallback(mHandler);
 
 			MetaioDebug.log("MetaioSDKViewActivity.onSurfaceCreated");
-
-
+			//this.mCamera = metaioSDK.getCamera(this);
+			//setCameraCallback(mCamera);
+			
 		} catch (Exception e) {
 			MetaioDebug
 					.log(Log.ERROR, "MetaioSDKViewActivity.onSurfaceCreated: "

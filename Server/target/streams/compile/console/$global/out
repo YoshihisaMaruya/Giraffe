@@ -1,0 +1,40 @@
+[0m[[0mdebug[0m] [0mStarting sandboxed run...[0m
+[0m[[0mdebug[0m] [0mWaiting for threads to exit or System.exit to be called.[0m
+[0m[[0mdebug[0m] [0mWaiting for thread run-main to exit[0m
+[0m[[0minfo[0m] [0mStarting scala interpreter...[0m
+[0m[[0mdebug[0m] [0m  Boot classpath: /System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jsfd.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar:/System/Library/Frameworks/JavaVM.framework/Frameworks/JavaRuntimeSupport.framework/Resources/Java/JavaRuntimeSupport.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/ui.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/laf.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/sunrsasign.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jsse.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jce.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/charsets.jar:/Users/maruya/.sbt/boot/scala-2.9.2/lib/scala-library.jar[0m
+[0m[[0mdebug[0m] [0m  Classpath: /Applications/workspace/Giraffe/Server/target/scala-2.9.2/classes:/Applications/workspace/Giraffe/Server/lib/img_serialize.jar:/Users/maruya/.ivy2/cache/net.liftweb/lift-mapper_2.9.2/jars/lift-mapper_2.9.2-2.5-M3.jar:/Users/maruya/.ivy2/cache/net.liftweb/lift-db_2.9.2/jars/lift-db_2.9.2-2.5-M3.jar:/Users/maruya/.ivy2/cache/net.liftweb/lift-util_2.9.2/jars/lift-util_2.9.2-2.5-M3.jar:/Users/maruya/.ivy2/cache/net.liftweb/lift-actor_2.9.2/jars/lift-actor_2.9.2-2.5-M3.jar:/Users/maruya/.ivy2/cache/net.liftweb/lift-common_2.9.2/jars/lift-common_2.9.2-2.5-M3.jar:/Users/maruya/.ivy2/cache/org.slf4j/slf4j-api/jars/slf4j-api-1.6.4.jar:/Users/maruya/.ivy2/cache/net.liftweb/lift-json_2.9.2/jars/lift-json_2.9.2-2.5-M3.jar:/Users/maruya/.ivy2/cache/org.scala-lang/scalap/jars/scalap-2.9.2.jar:/Users/maruya/.sbt/boot/scala-2.9.2/lib/scala-compiler.jar:/Users/maruya/.ivy2/cache/com.thoughtworks.paranamer/paranamer/jars/paranamer-2.4.1.jar:/Users/maruya/.ivy2/cache/joda-time/joda-time/jars/joda-time-1.6.2.jar:/Users/maruya/.ivy2/cache/commons-codec/commons-codec/jars/commons-codec-1.6.jar:/Users/maruya/.ivy2/cache/javax.mail/mail/jars/mail-1.4.4.jar:/Users/maruya/.ivy2/cache/javax.activation/activation/jars/activation-1.1.jar:/Users/maruya/.ivy2/cache/nu.validator.htmlparser/htmlparser/bundles/htmlparser-1.4.jar:/Users/maruya/.ivy2/cache/net.liftweb/lift-webkit_2.9.2/jars/lift-webkit_2.9.2-2.5-M3.jar:/Users/maruya/.ivy2/cache/commons-fileupload/commons-fileupload/jars/commons-fileupload-1.2.2.jar:/Users/maruya/.ivy2/cache/net.liftweb/lift-proto_2.9.2/jars/lift-proto_2.9.2-2.5-M3.jar:/Users/maruya/.ivy2/cache/net.java.dev.jna/jna/jars/jna-3.5.1.jar:/Users/maruya/.ivy2/cache/com.h2database/h2/jars/h2-1.3.170.jar:/Users/maruya/.ivy2/cache/org.apache.httpcomponents/httpcore/jars/httpcore-4.2.2.jar:/Users/maruya/.ivy2/cache/org.apache.httpcomponents/httpclient/jars/httpclient-4.2.1.jar:/Users/maruya/.ivy2/cache/commons-logging/commons-logging/jars/commons-logging-1.1.1.jar:/Users/maruya/.ivy2/cache/commons-io/commons-io/jars/commons-io-2.4.jar:/Users/maruya/.sbt/boot/scala-2.9.2/lib/scala-compiler.jar:/Users/maruya/.sbt/boot/scala-2.9.2/lib/jansi.jar:/Users/maruya/.sbt/boot/scala-2.9.2/lib/jline.jar[0m
+[0m[[0minfo[0m] [0m[0m
+[0m[[0mdebug[0m] [0m	Thread run-main exited.[0m
+[0m[[0mdebug[0m] [0mInterrupting remaining threads (should be all daemons).[0m
+[0m[[0mdebug[0m] [0mSandboxed run complete..[0m
+java.lang.RuntimeException: Nonzero exit code: 1
+	at scala.sys.package$.error(package.scala:27)
+	at sbt.Defaults$$anonfun$consoleTask$1$$anonfun$apply$23.apply(Defaults.scala:475)
+	at sbt.Defaults$$anonfun$consoleTask$1$$anonfun$apply$23.apply(Defaults.scala:475)
+	at scala.Option.foreach(Option.scala:197)
+	at sbt.Defaults$$anonfun$consoleTask$1.apply(Defaults.scala:475)
+	at sbt.Defaults$$anonfun$consoleTask$1.apply(Defaults.scala:474)
+	at sbt.Scoped$$anonfun$hf6$1.apply(Structure.scala:477)
+	at sbt.Scoped$$anonfun$hf6$1.apply(Structure.scala:477)
+	at scala.Function1$$anonfun$compose$1.apply(Function1.scala:41)
+	at sbt.Scoped$Reduced$$anonfun$combine$1$$anonfun$apply$11.apply(Structure.scala:295)
+	at sbt.Scoped$Reduced$$anonfun$combine$1$$anonfun$apply$11.apply(Structure.scala:295)
+	at sbt.$tilde$greater$$anonfun$$u2219$1.apply(TypeFunctions.scala:40)
+	at sbt.std.Transform$$anon$5.work(System.scala:67)
+	at sbt.Execute$$anonfun$submit$1$$anonfun$apply$1.apply(Execute.scala:221)
+	at sbt.Execute$$anonfun$submit$1$$anonfun$apply$1.apply(Execute.scala:221)
+	at sbt.ErrorHandling$.wideConvert(ErrorHandling.scala:18)
+	at sbt.Execute.work(Execute.scala:227)
+	at sbt.Execute$$anonfun$submit$1.apply(Execute.scala:221)
+	at sbt.Execute$$anonfun$submit$1.apply(Execute.scala:221)
+	at sbt.CompletionService$$anon$1$$anon$2.call(CompletionService.scala:26)
+	at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:439)
+	at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+	at java.lang.Thread.run(Thread.java:680)
+[0m[[31merror[0m] [0m{file:/Applications/workspace/Giraffe/Server/}default-9d7647/compile:[31mconsole[0m: Nonzero exit code: 1[0m

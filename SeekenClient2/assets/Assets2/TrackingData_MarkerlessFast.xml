@@ -3,7 +3,6 @@
 	<Sensors>
 		<Sensor type="FeatureBasedSensorSource" subtype="fast">
 			<SensorID>FeatureTracking1</SensorID>
-
 			<Parameters>
 				<FeatureBasedParameters>
 				</FeatureBasedParameters>
@@ -11,7 +10,7 @@
 			<SensorCOS>
 				<SensorCosID>AAA</SensorCosID>
 				<Parameters>
-					<referenceImage widthMM="222" heightMM="227">earth.png</referenceImage>
+					<referenceImage widthMM="222" heightMM="227">frame.png</referenceImage>
 				</Parameters>
 			</SensorCOS>
 			

@@ -13,7 +13,10 @@ libraryDependencies ++= Seq(
    "org.scala-tools" % "scala-tools-parent" % "1.6", // scala tools
    "net.liftweb" % "lift-mapper_2.9.2" % "2.5-M3", //lift orm 
    "net.java.dev.jna" % "jna" % "3.5.1", //jna
-   "com.h2database" % "h2" % "1.3.170" //h2
+   "com.h2database" % "h2" % "1.3.170", //h2
+   "org.apache.httpcomponents" % "httpcore" % "4.2.2", //HttpComponents
+   "org.apache.httpcomponents" % "httpclient" % "4.2.1", //HttpComponents
+   "commons-io" % "commons-io" % "2.4" //commons io
 ) 
 
 //unit test lib

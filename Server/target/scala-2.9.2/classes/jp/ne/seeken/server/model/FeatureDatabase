@@ -1,0 +1,14 @@
+package jp.ne.seeken.server.model
+
+import jp.ne.seeken.server.jna._
+
+
+/**
+ * Mst DatabaseとLSH Databaseを作成するクラス。
+ */
+object FeatureDatabase {
+	def removeAll
+  
+	def fromLocalFile(String)
+  
+}
