@@ -322,11 +322,20 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 				if (gnd == 0) {
 					metaioSDK.requestCameraImage();
 					ResponseSerializer rs = request.getResponse();
+					
 					//応答がある
 					if(rs != null){
 						savaResponse(rs);
 						//別スレッドでやっても大丈夫か？
 						boolean result = metaioSDK.setTrackingConfiguration(traking_data_path);
+						//TODO: セットしたタイミングからトラッキングが始まる。そのため、スレッドで回しているとトラッキングが始まらずにずっとセットになってしまう。
+						try {
+							//0.35秒間だけ待ってやる - 30フレームだけ(30fps)
+							Thread.sleep(1000);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
 						if(!result){
 							Log.d("TrackingData","Create failed");
 						}
