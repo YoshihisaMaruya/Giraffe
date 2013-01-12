@@ -45,15 +45,26 @@ class Surf(thread_id: java.lang.Integer,ipadder: String = null) {
     }
     
     /**
-     * RGBデータ形式からSURFを実行
+     * GrayデータからSURFを実行
      */
-    def fromRGB(width: java.lang.Integer,height: java.lang.Integer,data: Array[Byte]){
-       val exeSurf = Surf.getSurfFeaturs.getFunction("exeSurfFromRgb")
+     def fromGray(width: java.lang.Integer,height: java.lang.Integer,data: Array[Byte]){
+      val exeSurf = Surf.getSurfFeaturs.getFunction("exeSurfFromGray")
       val mtime = myCountTime.getExecutionTime{
     	  exeSurf.invoke(Array(thread_id,width,height,data))
       }
       myLog.exe_time(thread_id,ipadder,"SURF",mtime.toString)
       Log.create.tag("SURF").ipadder(ipadder).exe_time(mtime.toString).save
+    }
+     
+    /**
+     * RGBデータ形式からSURFを実行
+     */
+    def fromRGB(width: java.lang.Integer,height: java.lang.Integer,data: Array[Byte]){
+      val exeSurf = Surf.getSurfFeaturs.getFunction("exeSurfFromRgb")
+      val mtime = myCountTime.getExecutionTime{
+    	  exeSurf.invoke(Array(thread_id,width,height,data))
+      }
+      myLog.exe_time(thread_id,ipadder,"SURF",mtime.toString)
     }
 	
     /**
@@ -83,5 +94,14 @@ class Surf(thread_id: java.lang.Integer,ipadder: String = null) {
 	def descriptors: Array[Float] = {
 	  val descriptors = Surf.getSurfFeaturs.getFunction("getDescriptors").invokePointer(Array(thread_id))
 	  descriptors.getFloatArray(0, col * row)
+	}
+	
+	/**
+	 * grayを所得
+	 * TODO : widthとheightを引数で渡さなくする
+	 */
+	def gray(width: Int,height:Int): Array[Byte] ={
+	  val gray_array = Surf.getSurfFeaturs.getFunction("getGray").invokePointer(Array(thread_id))
+	  gray_array.getByteArray(0, width * height)
 	}
 }

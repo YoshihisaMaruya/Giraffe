@@ -13,9 +13,9 @@ import android.util.Log;
 public class CommunicationThread extends Thread {
 
 	private Queue<RequestSerializer> requestBuffer = new LinkedList<RequestSerializer>(); //requset用のバッファ
-	private final int max_request_buffer = 5;
+	private final int max_request_buffer = 2;
 	private Queue<ResponseSerializer> responseBuffer = new LinkedList<ResponseSerializer>(); //response用のバッファ
-	private final int max_response_buffer = 5; //response bufferの最大数
+	private final int max_response_buffer = 2; //response bufferの最大数
 
 	private int set_count = 1; //setImgが呼ばれた回数 
 	private final int request_count = 3; //サーバーにリクエストを投げるset_countの回数
@@ -25,6 +25,10 @@ public class CommunicationThread extends Thread {
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 	private Boolean is_close = false;
+	
+	private String host;
+	private int port;
+	
 
 	/**
 	 * 
@@ -32,7 +36,8 @@ public class CommunicationThread extends Thread {
 	 * @param port
 	 */
 	public CommunicationThread(String host,int port) {
-		this.setSocket(host, port);
+		this.host = host;
+		this.port = port;
 	}
 
 	
@@ -41,7 +46,7 @@ public class CommunicationThread extends Thread {
 	 * @param host
 	 * @param port
 	 */
-	private void setSocket(String host, int port) {
+	private void setSocket() {
 		try {
 			this.socket = new Socket(host, port);
 			this.out = new ObjectOutputStream(this.socket.getOutputStream());
@@ -84,41 +89,36 @@ public class CommunicationThread extends Thread {
 	public void close() {
 		this.is_close = true;
 	}
-	
-	private int[] rgbByteArraytorgbIntArray(byte[] bRGB) {
-		int iRGB_length = bRGB.length / 3;
-		int[] iRGB = new int[iRGB_length];
-		int count = 0;
-		for(int i = 0; i < iRGB_length; i++){
-			int r = bRGB[count];
-			int g = bRGB[count + 1];
-			int b = bRGB[count + 2];
-			iRGB[i] = (0xff000000 | r << 16 | g << 8 | b);
-		    count += 3;
-		}
-		return iRGB;
-	}
 
 	@Override
 	public void run() {
+		this.setSocket();
 		try {
+			RequestSerializer request;
 			while (!is_close) {
 				if (this.requestBuffer.size() == 0) continue; // send bufferがないときは何も送らない
 
-				Log.i("Connection Strat","Connection Start");
-				long start = System.currentTimeMillis(); //時間測定用
+				request = this.requestBuffer.poll();
 				
-				RequestSerializer request = this.requestBuffer.poll();
+				
+				Log.i("Connection Strat","Connection Start");
+				
+				 //送信にかかった時間を測定
+				long start = System.currentTimeMillis();
 				
 				this.out.writeObject(request); //send
 				this.out.flush();
 				
+				//resetをしないと、OutOfMemoryが発生
+				//ObjectOutputStreamは一度writeObjectしたオブジェクトを内部テーブルにキャッシュして保持しつづける仕様らしい。
+				this.out.reset();
+				
 				Log.i("Request Time", (System.currentTimeMillis() - start) + "[ms]");
 				
-				start = System.currentTimeMillis(); //時間測定用
-				ResponseSerializer response = (ResponseSerializer) this.in.readObject(); //response
-				
-				long stop = System.currentTimeMillis(); //ここまで
+				//送信完了してから、受信が終わるまでの時間を測定　
+				start = System.currentTimeMillis(); 
+				ResponseSerializer response = (ResponseSerializer)this.in.readObject(); //response
+				long stop = System.currentTimeMillis();
 				
 				Log.i("Response Time", (stop - start) + "[ms]");
 				
@@ -130,6 +130,7 @@ public class CommunicationThread extends Thread {
 					//TODO: TMP
 					this.responseBuffer.add(response);
 				}
+				Log.i("ResponseBufferSize",responseBuffer.size() + "");
 			}
 			this.out.writeObject(null); //コネクションをcloseするためのメッセージ
 			this.out.close();

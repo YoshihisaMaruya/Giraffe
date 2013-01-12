@@ -5,7 +5,7 @@
  * should not be modified by hand.
  */
 
-package jp.ne.seeken.client;
+package jp.ne.seeken.client.metaio;
 
 public final class R {
     public static final class attr {

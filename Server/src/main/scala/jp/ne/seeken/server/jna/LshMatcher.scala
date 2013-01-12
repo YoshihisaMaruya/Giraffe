@@ -19,7 +19,7 @@ object LshMatcher {
    val max_size = 1000
    val lib_path = getClass.getClassLoader.getResource("jna/liblsh_matcher.so").getFile
    val lshMatcher = NativeLibrary.getInstance(lib_path)
-   val id_managet = new Array[Int](max_size)
+   val id_map = new Array[Int](max_size)
  
    ////lshのハッシュテーブルを作成
    def init[T](dir_path: String,db_size: T)(implicit t:T => java.lang.Integer){
@@ -48,10 +48,10 @@ object LshMatcher {
     */
    def add[T](id: Int,row: T, col: T,features: Array[Float])(implicit t:T => java.lang.Integer){
      this.lshMatcher.getFunction("add").invoke(Array(row,col,features))
-     id_managet(current_size) = id
+     id_map(current_size) = id
      current_size = current_size + 1
    }
-   
+ 
    /**
     * imageデータからLSHに追加
     */
@@ -71,7 +71,6 @@ class LshMatcher(thread_id: Int,ipadder: String){
     }
     
     myLog.exe_time(thread_id,ipadder,"Match",time.toString)
-    Log.create.tag("Lsh").exe_time(time.toString).ipadder(ipadder).save
     
     val result_tupple = _makeTupple(result_id.getIntArray(0, LshMatcher.current_size.asInstanceOf[java.lang.Integer]).toList,0).sort((x,y) => x._2 > y._2)
     //result_tupple.foreach(x => print(x + ","))
@@ -86,7 +85,7 @@ class LshMatcher(thread_id: Int,ipadder: String){
   private def _makeTupple(l: List[Int],i: Int): List[(Int,Int)] ={
     l match{
       case Nil => Nil
-      case h::t => (LshMatcher.id_managet(i),h)::_makeTupple(t, i + 1)
+      case h::t => (LshMatcher.id_map(i),h)::_makeTupple(t, i + 1)
     }
   } 
 }

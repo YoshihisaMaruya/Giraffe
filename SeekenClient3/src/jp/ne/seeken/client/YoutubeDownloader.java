@@ -28,11 +28,15 @@ public class YoutubeDownloader {
 	private DataOutputStream out = null;
 	private InputStream in = null;
 	private OutputStream result = null;
+	
+	private String host;
+	private int port;
 	/**
 	 * @param args
 	 */
 	public YoutubeDownloader(String host,int port){
-		this.setSocket(host, port);
+		this.host = host;
+		this.port = port;
 	}
 	
 	/**
@@ -40,7 +44,7 @@ public class YoutubeDownloader {
 	 * @param host
 	 * @param port
 	 */
-	private void setSocket(String host,int port){
+	private void setSocket(){
 		try {
 			this.socket = new Socket(host,port);
 			 this.out = new DataOutputStream(socket.getOutputStream());
@@ -76,6 +80,7 @@ public class YoutubeDownloader {
 	 * @param output_path
 	 */
 	public void execute(int id,String output_path){
+		this.setSocket();
 		try {
 			this.result = new FileOutputStream(new File(output_path));
 			
@@ -90,6 +95,7 @@ public class YoutubeDownloader {
 				}
 				else break;
 			}
+			this.result.close();
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

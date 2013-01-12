@@ -10,6 +10,10 @@ import java.io.FileInputStream
 import java.io.OutputStreamWriter
 import scala.io.Source
 import javax.imageio.ImageIO
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+
+import jp.dip.roundvalley.scala.support.myLog
 
 /**
  * 特徴量とその対応を保持するデータベース(h2)
@@ -43,6 +47,17 @@ protected class PermanentDB extends LongKeyedMapper[PermanentDB] with IdPK {
   object feature extends MappedString(this, 255)
   
   /**
+   * 特徴点の配列
+   */
+  def featuresArray: Array[Float] =  {
+    val sf = Source.fromFile(this.feature)
+    val r = sf.getLines.toList(0).split(',').map(f => f.toFloat)
+    sf.close()
+    r
+  }
+
+  
+  /**
    * 行
    */
   object col extends MappedInt(this)
@@ -68,26 +83,44 @@ protected class PermanentDB extends LongKeyedMapper[PermanentDB] with IdPK {
   object youtube_download_link extends MappedString(this, 5000)
   
   /**
-   * 
+   * grayを保存
    */
-  def featuresArray: Array[Float] = Source.fromFile(this.feature).getLines.toList(0).split(',').map(f => f.toFloat)
+  object gray extends MappedString(this,500)
+  
+  /**
+   * gray byte配列を所得
+   */
+  def grayArray: Array[Byte] = {
+        
+    val fi = new FileInputStream(gray)
+    val result = new Array[Byte](width * height)
+	fi.read(result,0,result.length)
+    fi.close
+    result
+  }
+  
 }
 
 protected object PermanentDB extends PermanentDB with LongKeyedMetaMapper[PermanentDB] {
   val image_dir = getClass.getClassLoader.getResource("image").getFile //imageを保存するパス
   val feature_dir = getClass.getClassLoader.getResource("feature").getFile //特徴量を保存するパス
+  val gray_dir =  getClass.getClassLoader.getResource("gray").getFile //grayイメージを保存するパス
   
   def remove(id: Int) {
   }
 
   def remove(c: PermanentDB) {
-    if (!c.image.equals("")) {
+    if (!c.image.toString.equals("")) {
       val image = c.image
       (new File(image)).delete
     }
-    if (!c.feature.equals("")) {
+    if (!c.feature.toString.equals("")) {
       val feature = c.feature
       (new File(feature)).delete
+    }
+    if (!c.gray.toString.equals("")) {
+      val gray = c.gray
+      (new File(gray)).delete
     }
     c.delete_!
   }
@@ -104,6 +137,7 @@ protected object PermanentDB extends PermanentDB with LongKeyedMetaMapper[Perman
    */
   @Override
   def create(surf: Surf, input_image: String, youtube_link: String) {
+    myLog.info("PermanentDB.create",input_image)
     //idの取得
     val c = super.create
     c.save
@@ -112,9 +146,9 @@ protected object PermanentDB extends PermanentDB with LongKeyedMetaMapper[Perman
     //Surfの実行,保存
     surf.fromFile(input_image)
     val feature = feature_dir + "/" + id + ".surf"
-    val f = new File(feature)
-    val fileOutPutStream = new FileOutputStream(f, false)
-    val writer = new OutputStreamWriter(fileOutPutStream, "UTF-8")
+    val feature_file = new File(feature)
+    val feature_fos = new FileOutputStream(feature_file, false)
+    val feature_writer = new OutputStreamWriter(feature_fos, "UTF-8")
 
     val col = surf.col
     val row = surf.row
@@ -125,26 +159,28 @@ protected object PermanentDB extends PermanentDB with LongKeyedMetaMapper[Perman
     for (i <- 0 until row) {
       val k = col * i
       for (j <- 0 until col) {
-                  writer.write(descriptors(k + j) + ",")
+                  feature_writer.write(descriptors(k + j) + ",")
       }
     }
-    writer.write("\n")
+    feature_writer.write("\n")
     c.feature(feature)
-
-    writer.close
-    fileOutPutStream.close
-    
-    //画像の縦横を取得
-    val image = ImageIO.read(f)
-    val width = image.getWidth
-    val height = image.getHeight
-    c.width(width).height(height)
+        
+    feature_writer.close
+    feature_fos.close
 
     //yotubeリンクの取得
     val youtube_download_link = YoutubeDownloadLinkGenerator(youtube_link)
     c.youtube_download_link(youtube_download_link)
     c.youtube_link(youtube_link)
 
+
+    //画像の縦横を取得
+    val fs = new FileInputStream(input_image)
+    val image = ImageIO.read(fs)
+    val width = image.getWidth
+    val height = image.getHeight
+    fs.close
+    
     //imageファイルのコピー
     val is = new FileInputStream(input_image)
     val image_path = image_dir + "/" + id + ".jpg"
@@ -155,8 +191,22 @@ protected object PermanentDB extends PermanentDB with LongKeyedMetaMapper[Perman
       case e => throw new Exception(e.getMessage())
     } finally {
       os.close
+      is.close
     }
+ 
+    c.width(width).height(height)
     c.image(image_path).image_name(input_image)
+    
+       //grayデータの保存
+    val gray = gray_dir +"/" + id + ".obj"
+    val gray_fi = new FileOutputStream(gray)
+	
+    val gray_array = surf.gray(width,height)
+    gray_fi.write(gray_array,0,gray_array.length)
+    gray_fi.flush
+    gray_fi.close
+ 
+    c.gray(gray)
 
     c.save
   }

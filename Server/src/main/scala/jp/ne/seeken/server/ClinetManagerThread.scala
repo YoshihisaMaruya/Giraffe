@@ -20,49 +20,23 @@ import jp.ne.seeken.xml
 import jp.ne.seeken.server.model.SeekenDB
 import jp.ne.seeken.xml.MkTrackingData
 import jp.ne.seeken.xml.MkTrackingData
+import java.io.FileOutputStream
 
 class ClinetManagerThread(thread_id: Int, socket: Socket) extends Thread {
 
   private var permanent_ids_manager: Array[Int] = List.fill(5)(-1).toArray
 
-  //imgを読み込む
-  private def _loadImage(file_name: String): BufferedImage = {
-    try {
-      println(file_name)
-      val file = new File(file_name)
-      ImageIO.read(file)
-    } catch {
-      case e => e.printStackTrace(); null
-    }
-  }
-
   /**
-   * rgbのバイト配列をint配列に直す
-   * @param bRGB : RGB配列(バイト)
-   * @return iRGB : RGB配列(int) * alphaは0
+   * permanent idをマネージメント、必要な物だけimage情報に追加する。
+   * @return (widths,height,images)
    */
-  private def rgbByteArraytoIntArray(bRGB: Array[Byte]): Array[Int] = {
-    val iRGB_length = bRGB.length / 3
-    val iRGB = new Array[Int](iRGB_length)
-    var count = 0
-    for (i <- 0 until iRGB_length) {
-      val r = bRGB(count)
-      val g = bRGB(count + 1)
-      val b = bRGB(count + 2)
-      iRGB(i) = (0xff000000 | r << 16 | g << 8 | b)
-      count = count + 3
-    }
-    iRGB
-  }
-
-  /**
-   * permanent idをマネージメント、必要な物だけimageに追加する。
-   */
-
-  private def _makeImageOfResponse(ids: List[Int]) = {
-    def _make(ids: List[Int], i: Int, images: Array[Array[Byte]]): Array[Array[Byte]] = {
+  private def _makeImageInfoOfResponse(ids: List[Int]): (Array[Int],Array[Int],Array[Array[Byte]]) = {
+    /**
+     * idsからimage infoを作成
+     */
+    def _make(ids: List[Int],widths: Array[Int],heights: Array[Int],images: Array[Array[Byte]],i: Int): (Array[Int],Array[Int],Array[Array[Byte]]) = {
       ids match {
-        case Nil => images
+        case Nil => (widths,heights,images)
         case id :: t => {
           var is_send = false
           for (p_id <- permanent_ids_manager) {
@@ -73,41 +47,22 @@ class ClinetManagerThread(thread_id: Int, socket: Socket) extends Thread {
           }
           if(!is_send){
              val p = SeekenDB.findById(id)
-              images(i) = _makeRGBImage(_loadImage(p.image))
+             widths(i) = p.width
+             heights(i) = p.height
+             images(i) = p.grayArray
           }
-          _make(t, i + 1, images)
+          else {
+        	  images(i) = null
+          }
+          _make(t, widths,heights,images,i + 1)
         }
       }
     }
-    val result = _make(ids, 0, new Array[Array[Byte]](5))
+    val result = _make(ids, new Array[Int](5),new Array[Int](5),new Array[Array[Byte]](5),0)
     permanent_ids_manager = ids.toArray
     result
   }
 
-  private def _makeRGBImage(buffer: BufferedImage): Array[Byte] = {
-    //color int(a,r,g,b) をbyte(a),byte(b),byte(c)に分割
-    val a = (c: Int) => (c >> 24).toByte
-    val r = (c: Int) => (c >> 16 & 0xff).toByte
-    val g = (c: Int) => (c >> 8 & 0xff).toByte
-    val b = (c: Int) => (c & 0xff).toByte
-
-    //response
-    val height = buffer.getHeight
-    val widht = buffer.getWidth
-    val rgbs = new Array[Byte](height * widht * 3) //byte型
-    var count: Int = 0
-    for (y <- 0 until height) {
-      for (x <- 0 until widht) {
-        //rgbs(count) = rgb(result_img.getRGB(x, y))
-        val argb = buffer.getRGB(x, y)
-        rgbs(count) = r(argb)
-        rgbs(count + 1) = g(argb)
-        rgbs(count + 2) = b(argb)
-        count = count + 3
-      }
-    }
-    rgbs;
-  }
 
   /**
    * response用データを作成
@@ -118,19 +73,9 @@ class ClinetManagerThread(thread_id: Int, socket: Socket) extends Thread {
 
     val id_maps = result_ids.toArray
 
-    val images = _makeImageOfResponse(result_ids)
+    val image_info = _makeImageInfoOfResponse(result_ids)
     
-    val heighs = result_ids.map(id => {
-      val s = SeekenDB.findById(id)
-      s.height.toInt
-    }).toArray
-    
-    val widths = result_ids.map(id => {
-      val s = SeekenDB.findById(id)
-      s.width.toInt
-    }).toArray
-    
-    new ResponseSerializer(xml, id_maps, widths,heighs,images)
+    new ResponseSerializer(xml, id_maps, image_info._1,image_info._2,image_info._3)
   }
 
   override def run() {
@@ -151,6 +96,8 @@ class ClinetManagerThread(thread_id: Int, socket: Socket) extends Thread {
       while (!is_close) {
         //accept
         val request = in.readObject().asInstanceOf[RequestSerializer]
+        
+        //サーバ側の処理時間の測定開始
         val start = System.currentTimeMillis()
 
         is_close = if (request == null) true //nullが来たら通信終了
@@ -158,18 +105,48 @@ class ClinetManagerThread(thread_id: Int, socket: Socket) extends Thread {
           myLog.info("Accept", "thread_id=" + thread_id + ", ipadder=" + this.socket.getInetAddress)
           myLog.info("RequestSize", "widht=" + request.width + ",height=" + request.height + ",size=" + request.data.length + "[B]" + ",color_format = " + request.color_format)
           //request
-          val result = seekenDB.query(request.width, request.height, request.data, request.color_format)
+          //クエリーにかかる時間を測定
+          val query_time = System.currentTimeMillis()
+          val result = seekenDB.query(request)
+          
+          //クエリーにかかった時間
+          myLog.exe_time(thread_id, this.socket.getInetAddress.toString, "Query Time", (System.currentTimeMillis() - query_time).toString)
           myLog.info("Result", "thread_id =" + thread_id + ",result_ids=" + result.toString)
 
           //response
+          //リスポンスデータを作成にかかった時間を測定
+          val make_response_time = System.currentTimeMillis()
           val response = _makeResponse(result)
-          //myLog.info("ResponseSize","widht=" + response.ge + "height=" + response.getHeight + "size=" + response.getByteData.length + "[B]")
-          out.writeObject(response)
-          out.flush()
+          
+          
+          //TODO : デバック用なので後で消去
+          val req_os = new FileOutputStream("/Users/maruyayoshihisa/Desktop/hoge/request.obj")
+          val req_oos = new ObjectOutputStream(req_os)
+          req_oos.writeObject(request)
+          req_oos.close
+          req_os.close
+          
+          val res_os = new FileOutputStream("/Users/maruyayoshihisa/Desktop/hoge/response.obj")
+          val res_oos = new ObjectOutputStream(res_os)
+          res_oos.writeObject(response)
+          res_oos.close
+          res_os.close
+          
+          
+          
+          //リスポンスデータを作成にかかった時間
+          myLog.exe_time(thread_id, this.socket.getInetAddress.toString, "Make Response Time", (System.currentTimeMillis() - make_response_time).toString)
+          
+          //サーバ側の処理時間
+          myLog.exe_time(thread_id, this.socket.getInetAddress.toString, "Total Time", (System.currentTimeMillis() - start).toString)
 
-          //total log
-          myLog.exe_time(thread_id, this.socket.getInetAddress.toString, "Total", (System.currentTimeMillis() - start).toString)
-         // Log.tag("Response").exe_time((System.currentTimeMillis() - start).toString).ipadder(this.socket.getInetAddress.toString).save()
+          //送信
+          out.writeObject(response)
+          out.flush     
+          //resetしないとクライアント側がOutOfMemoryになる？
+          out.reset
+
+          println()
           false
         }
       }

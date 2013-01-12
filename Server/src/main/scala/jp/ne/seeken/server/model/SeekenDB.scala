@@ -8,8 +8,8 @@ import net.liftweb.http.{ LiftRules }
 import net.liftweb.mapper.{ DB, Schemifier, DefaultConnectionIdentifier, StandardDBVendor }
 import jp.ne.seeken.server.jna.LshMatcher
 import scala.io.Source
-
 import scala.io.Source
+import jp.ne.seeken.serializer.RequestSerializer
 
 /**
  * PermanentDB,LSH DBを管理するクラス
@@ -111,9 +111,19 @@ class SeekenDB(thread_id: Int, ipadder: String) {
    */
   def query(query_keypoints_size: Int, rows: Int, cols: Int, query_descriptors: Array[Float]): List[Int] = lsh.exe_match(query_keypoints_size, rows, cols, query_descriptors)
 
+  /**
+   * 
+   */
   def query(width: Int,height: Int,data: Array[Byte],color_format: String): List[Int] = {
-    surf.fromRGB(width, height, data)
+    color_format match {
+    	case "argb" => surf.fromRGB(width, height,data)
+    	case "gray" => surf.fromGray(width, height, data)
+    }
     query(surf.keypoints_size,surf.row,surf.col,surf.descriptors)
+  }
+  
+  def query(rs: RequestSerializer): List[Int] = {
+    this.query(rs.width,rs.height,rs.data,rs.color_format)
   }
   
   def query(id: Int): List[Int] = {

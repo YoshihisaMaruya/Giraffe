@@ -21,6 +21,12 @@ import org.apache.http.util.EntityUtils;*/
  * Yotubeへのダウンロードリンクを作成
  */
 object YoutubeDownloadLinkGenerator {
+    //ATTENTION : 運用中のサイトに置く
+  private var site_url : String = null
+  def setSiteURL(site_url : String){
+    this.site_url = site_url
+  }
+  
   def apply(youtube_url: String): String = {
     val link = (new YoutubeDownloadLinkGenerator(youtube_url)).get
     link
@@ -28,9 +34,7 @@ object YoutubeDownloadLinkGenerator {
 }
 
 class YoutubeDownloadLinkGenerator(youtube_url: String) {
-  //ATTENTION: 運用中のサイトに置く
-  val site_url = "http://localhost/youtube/"
-  val get_url = site_url + "?url=" + youtube_url
+  val get_url = YoutubeDownloadLinkGenerator.site_url + "?url=" + youtube_url
         
   private def read: String = {
     val json = Source.fromURL(get_url).getLines.toList

@@ -7,18 +7,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.UnknownHostException;
-import java.util.Enumeration;
 import java.util.Properties;
-import java.util.Vector;
 import java.io.FileWriter;
 
 import jp.ne.seeken.client.CommunicationThread;
-import jp.ne.seeken.client.R;
+import jp.ne.seeken.client.ConvertDataFormatUsingOpenCV;
+import jp.ne.seeken.client.metaio.R;
 import jp.ne.seeken.client.YoutubeDownloader;
-import jp.ne.seeken.client.R.layout;
+import jp.ne.seeken.client.metaio.R.layout;
 import jp.ne.seeken.serializer.RequestSerializer;
 import jp.ne.seeken.serializer.ResponseSerializer;
 
@@ -33,14 +29,19 @@ import com.metaio.sdk.jni.TrackingValuesVector;
 import com.metaio.sdk.jni.Vector3d;
 import com.metaio.tools.io.AssetsManager;
 
-import android.os.AsyncTask;
+import android.R.anim;
 import android.os.Bundle;
 import android.os.Environment;
-import android.app.Activity;
 import android.content.res.AssetManager;
 import android.util.Log;
 import android.view.View;
 import android.graphics.*;
+
+//OpenCV
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.android.Utils;
+import org.opencv.imgproc.Imgproc;
 
 public class SeekenClietnActivity extends MetaioSDKViewActivity {
 
@@ -57,6 +58,10 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 	// Seeken
 	private CommunicationThread ct;
 	private YoutubeDownloader yd;
+	private ConvertDataFormatUsingOpenCV convertDataFormatUsingOpenCV;
+
+	//
+	private int camera_count = 0;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -70,11 +75,11 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 		super.onCreate(savedInstanceState);
 
 		// データ保存用のパス
-		/*
-		 * this.dir_path = Environment.getExternalStorageDirectory().getPath() +
-		 * "/seeken"; // /dataなど File f = new File(dir_path); f.mkdir();
-		 * this.dir_path += "/";
-		 */
+		// dir_pathを入れ替えると、SDカード保存になる。
+		/*this.dir_path = Environment.getExternalStorageDirectory().getPath() + "/seeken"; // /dataなど 
+		File f = new File(dir_path); f.mkdir();
+		this.dir_path += "/";*/
+		 
 		this.packageName = this.getApplicationContext().getPackageName();
 		this.dir_path = "/data/data/" + packageName + "/files/";
 
@@ -100,7 +105,12 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 		// Youube Download用
 		this.yd = new YoutubeDownloader(host, port + 1);
 
+		// リスポンスデータ作成用
+		this.convertDataFormatUsingOpenCV = new ConvertDataFormatUsingOpenCV();
+
 		mCallbackHandler = new MetaioSDKCallbackHandler();
+
+		camera_count = 0;
 	}
 
 	@Override
@@ -136,39 +146,18 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 	}
 
 	/**
-	 * rgbのバイト配列をint配列に直す
+	 * リスポンス情報をローカルに保存 TODO: I/O処理がとてつもなく遅い。高速化する部分
 	 * 
-	 * @param bRGB
-	 *            : RGB配列(バイト)
-	 * @return iRGB : RGB配列(int) * alphaは0
-	 */
-	private int[] rgbByteArraytoIntArray(byte[] bRGB) {
-		int iRGB_length = bRGB.length / 3;
-		int[] iRGB = new int[iRGB_length];
-		int count = 0;
-		for (int i = 0; i < iRGB_length; i++) {
-			int r = bRGB[count];
-			int g = bRGB[count + 1];
-			int b = bRGB[count + 2];
-			iRGB[i] = (0xff000000 | r << 16 | g << 8 | b);
-			count = count + 3;
-		}
-		return iRGB;
-	}
-
-	/**
-	 * リスポンス情報をローカルに保存
-	 * TODO: I/O処理がとてつもなく遅い。高速化する部分
 	 * @param rs
 	 */
 	private int[] id_maps = null;
+
 	private void savaResponse(ResponseSerializer rs) {
-		// トラッキングの停止
-		metaioSDK.pauseTracking();
-		
+
 		// trakingDataの保存
 		String trackingData = rs.getXML();
 		try {
+			Log.v("save_path",traking_data_path);
 			FileWriter fw = new FileWriter(traking_data_path);
 			fw.write(trackingData);
 			fw.close();
@@ -179,6 +168,10 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 		// id_mapsを取得
 		int[] pre_id_maps = id_maps;
 		id_maps = rs.getIdMaps();
+		
+		for(int i = 0; i < id_maps.length; i++){
+			Log.d("result id",id_maps[i] + "");
+		}
 
 		// いらなくなった画像,yotube動画の消去
 		if (pre_id_maps != null) {
@@ -205,30 +198,19 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 			moviePlanes[i] = null;
 		}
 
-		//新規画像保存
+		// 新規画像保存
 		for (int i = 0; i < id_maps.length; i++) {
 			byte[] image = rs.getImage(i);
-			//imageがローカルになければ、ローカルに保存
+			// imageがローカルになければ、ローカルに保存
 			if (image != null) {
-				int width = rs.getWidth(i);
-				int height = rs.getHeight(i);
-				Bitmap bitMap = Bitmap.createBitmap(width, height,
-						Bitmap.Config.ARGB_8888);
-				int[] argb = rgbByteArraytoIntArray(image);
-				bitMap.setPixels(argb, 0, width, 0, 0, width, height);
 				try {
-					OutputStream fOut = new FileOutputStream(
-							this.getImagePath(id_maps[i]));
-					bitMap.compress(Bitmap.CompressFormat.JPEG, 100, fOut);
-				} catch (FileNotFoundException e) {
+					this.convertDataFormatUsingOpenCV.saveResponse(rs.getWidth(i), rs.getHeight(i), image,this.getImagePath(id_maps[i]));
+				} catch (IOException e1) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
+					e1.printStackTrace();
 				}
-			}
 		}
-		
-		//トラッキングの再開
-		metaioSDK.resumeTracking();
+		}
 	}
 
 	private String getImagePath(int id) {
@@ -267,7 +249,9 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 		// トラッキングレートの分だけ待ってみる
 		try {
 			float trackingFrameRate = metaioSDK.getTrackingFrameRate();
-			Thread.sleep((long) metaioSDK.getTrackingFrameRate());
+			float sleep_mtime = (1 / trackingFrameRate) * 2 * 1000;
+			Log.i("waitTrakingFrame",sleep_mtime + "[ms]");
+			Thread.sleep((long) sleep_mtime);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -280,29 +264,35 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 	 */
 	Boolean is_run = true;
 	TrackingWatcher tw;
-	private class TrackingWatcher extends Thread {
-		Boolean is_first_request = true;
 
+	private class TrackingWatcher extends Thread {
 		@Override
 		public void run() {
 			ResponseSerializer rs;
+		
 			while (is_run) {
-				//TODO : xmlファイルをセットしていなくても動くのか？
+				// TODO : xmlファイルをセットしていなくても動くのか？
+				long total_start = System.currentTimeMillis();
 				int gnd = metaioSDK.getNumberOfValidCoordinateSystems(); // トラッキングしている数
 				// //トラッキングを開始したら、
 				if (gnd != 0) {
+					Log.i("Tracking","true");
 					// //トラッキングデータをセット
 					TrackingValuesVector trackingValues = metaioSDK
 							.getTrackingValues();
+					Log.i("traking size",trackingValues.size() + "");
+					if(trackingValues.size() == 0) continue;
 					for (int i = 0; i < trackingValues.size(); i++) {
 						final TrackingValues v = trackingValues.get(i);
 						int id = Integer.valueOf(v.getCosName());
 						int cosId = v.getCoordinateSystemID();
 						String moviePath = getMoviePath(id);
 						File f = new File(moviePath);
+						boolean fb = f.exists();
 						// ファイルが存在しているときは、ダウンロードしない
-						if (!f.exists())
+						if (!f.exists()){
 							yd.execute(id, moviePath);
+						}
 						moviePlanes[cosId - 1] = metaioSDK
 								.createGeometryFromMovie(moviePath);
 						moviePlanes[cosId - 1].setScale(new Vector3d(2.0f,
@@ -314,44 +304,57 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 						moviePlanes[cosId - 1].startMovieTexture(true);
 					}
 
-					//バッファをクリア
+					// バッファをクリア
 					ct.clearBuffer();
 
-					//フラグを元に戻す
-					is_first_request = true;
-
-					//トラッキングが終了するまで、待つ
+					// トラッキングが終了するまで、待つ
 					while (true) {
 						waitTrackingFrameRate();
 						gnd = metaioSDK.getNumberOfValidCoordinateSystems(); // トラッキングしている数
 						if (gnd == 0)
 							break;
 					}
+					Log.i("Traking","finish");
 				} else {
-					//一回目は応答があるまで待つ(TrackingDataがないと、トラッキングを開始してもしても意味がない)
-					if (is_first_request) {
-						metaioSDK.requestCameraImage();
+					Log.i("Tracking","false");
+					// トラッキングの停止
+					metaioSDK.pauseTracking();
+
+					// 応答があるまで待つ(TrackingDataがないと、トラッキングを開始してもしても意味がない)
+					metaioSDK.requestCameraImage();
+
+					//metaioの使用上、カメラで1回目に取得したデータは無視
+					camera_count++;
+					if (camera_count > 1) {
 						while ((rs = ct.pull()) == null);
+
+						// 保存
+						long save_start = System.currentTimeMillis(); // 時間測定用
 						savaResponse(rs);
-					} else {
-						metaioSDK.requestCameraImage();
-						rs = ct.pull();
-						if (rs != null)
-							savaResponse(rs);
+						Log.i("Save local file time",
+								(System.currentTimeMillis() - save_start) + "[ms]");
+
+						// トラッキングファイルをセット
+						long taking_config_start = System.currentTimeMillis(); // 時間測定用
+						
+						boolean trakingConfig = metaioSDK
+								.setTrackingConfiguration(traking_data_path);
+						
+						Log.i("Tracking Config Time",
+								(System.currentTimeMillis() - taking_config_start) + "[ms]");
+
+						if (!trakingConfig) {
+							Log.i("TrackingWatcher TrakingConfig", "false");
+						}
 					}
-					
-					//トラッキングファイルをセット
-					boolean trakingConfig = metaioSDK
-							.setTrackingConfiguration(traking_data_path);
-					if (!trakingConfig) {
-						Log.v("TrackingWatcher TrakingConfig", "false");
-					}
-					
-					//次からはリスポンスがある
-					is_first_request = false;
-					
-					//トラッキングが始まるように、フレームレート分待ってやる
+					// トラッキングの再開
+					metaioSDK.resumeTracking();
+
+					// トラッキングが始まるように、フレームレート分待ってやる
 					waitTrackingFrameRate();
+					
+					Log.i("total time",
+							(System.currentTimeMillis() - total_start) + "[ms]");
 				}
 			}
 		}
@@ -363,13 +366,20 @@ public class SeekenClietnActivity extends MetaioSDKViewActivity {
 	 * @author maruyayoshihisa
 	 * 
 	 */
+	byte[] tmp_buffer = null;
+
 	private class UnifeyeCallbackHandler extends IMetaioSDKCallback {
+		/**
+		 * onNewCameraFrameが呼ばれまくると、OutOfMemoryが起きる。
+		 * リクエストが終わったらこのメソッドを呼ぶかに切り替える。
+		 */
 		@Override
 		public void onNewCameraFrame(ImageStruct cameraFrame) {
-			ECOLOR_FORMAT a = cameraFrame.getColorFormat();
-			String color_format = a.toString();
-			ct.push(new RequestSerializer(cameraFrame.getWidth(), cameraFrame
-					.getHeight(), cameraFrame.getBuffer(), color_format));
+			String color_format = cameraFrame.getColorFormat().toString();
+			RequestSerializer rs = convertDataFormatUsingOpenCV.makeRequest(cameraFrame.getWidth(),
+					cameraFrame.getHeight(), cameraFrame.getBuffer(),
+					color_format);
+			ct.push(rs);
 		}
 	}
 

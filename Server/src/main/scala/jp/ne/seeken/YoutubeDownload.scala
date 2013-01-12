@@ -79,7 +79,7 @@ private class YoutubeDownloadThread(socket: Socket) extends Thread {
     } finally {
       in.close
       out.close
-      youtube_in.close
+      if(youtube_in != null) youtube_in.close
       socket.close
     }
   }
